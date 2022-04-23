@@ -7,16 +7,16 @@ use percent_encoding::{utf8_percent_encode, AsciiSet};
 use postgres_openssl::MakeTlsConnector;
 use reqwest;
 use reqwest::header::{HeaderMap, AUTHORIZATION, CONTENT_TYPE};
-use reqwest::{Client, StatusCode};
 use std::collections::HashMap;
 use std::env;
 use std::fs::File;
 use std::io::Write;
+use std::process::Command;
 
 struct Service {
     id: String,
     name: String,
-    status: StatusCode,
+    status: i32,
 }
 
 #[tokio::main]
@@ -25,8 +25,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .format("%Y年%m月%d日 %H:%M:%S")
         .to_string();
     println!("{}", time);
-    let http_client = Client::new();
-    let [tips, open_lms] = fetch_status_code(http_client).await?;
+    let [tips, open_lms] = fetch_status_code().await?;
     println!("Tips: {}", tips.status);
     println!("Open LMS: {}", open_lms.status);
     let database_client = &connect_to_database().await?;
@@ -46,18 +45,29 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     Ok(())
 }
 
-async fn fetch_status_code(client: Client) -> Result<[Service; 2], Box<dyn std::error::Error>> {
+fn get_reqest(url: &str) -> i32 {
+    let output = Command::new("curl")
+        .args(&["-s", "-o", "/dev/null", "-w", "%{http_code}", url])
+        .output()
+        .expect("failed to start `ls`");
+    let status_code = String::from_utf8_lossy(&output.stdout)
+        .trim()
+        .parse::<i32>()
+        .unwrap();
+    println!("{}", status_code);
+    status_code
+}
+
+async fn fetch_status_code() -> Result<[Service; 2], Box<dyn std::error::Error>> {
     const TIPS_URL: &str = "https://tips.u-tokai.ac.jp/campusweb/";
-    let tips_res = client.get(TIPS_URL).send().await?;
-    let tips_status = tips_res.status();
+    let tips_status = get_reqest(TIPS_URL);
     let tips = Service {
         id: String::from("S_TIPS"),
         name: String::from("TIPS"),
         status: tips_status,
     };
     const OPEN_LMS_URL: &str = "https://tlms.tsc.u-tokai.ac.jp/";
-    let open_lms_res = client.get(OPEN_LMS_URL).send().await?;
-    let open_lms_status = open_lms_res.status();
+    let open_lms_status = get_reqest(OPEN_LMS_URL);
     let open_lms = Service {
         id: String::from("S_OPENLMS"),
         name: String::from("Open LMS"),
@@ -99,7 +109,7 @@ async fn count_error_times(
     client: &tokio_postgres::Client,
     service: &Service,
 ) -> Result<(), Box<dyn std::error::Error>> {
-    let query = if service.status.is_server_error() {
+    let query = if service.status >= 500 && service.status < 600 {
         format!("UPDATE services SET count_of_connection_failure = count_of_connection_failure + 1 WHERE id = '{}'",service.id)
     } else {
         format!(
