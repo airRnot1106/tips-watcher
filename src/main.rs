@@ -18,6 +18,10 @@ struct Service {
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    let time = (Utc::now() + Duration::hours(9))
+        .format("%Y年%m月%d日 %H:%M:%S")
+        .to_string();
+    println!("{}", time);
     let http_client = Client::new();
     let [tips, open_lms] = fetch_status_code(http_client).await?;
     println!("Tips: {}", tips.status);
