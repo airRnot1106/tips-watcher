@@ -47,9 +47,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
 fn get_reqest(url: &str) -> i32 {
     let output = Command::new("curl")
-        .args(&["-s", "-o", "/dev/null", "-w", "%{http_code}", url])
+        .args(&[url, "-o", "/dev/null", "-w", "%{http_code}", "-s", "-k"])
         .output()
-        .expect("failed to start `ls`");
+        .expect("failed to start `curl`");
     let status_code = String::from_utf8_lossy(&output.stdout)
         .trim()
         .parse::<i32>()
