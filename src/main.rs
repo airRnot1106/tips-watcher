@@ -87,7 +87,7 @@ fn generate_ca_file() -> Result<(), Box<dyn std::error::Error>> {
 
 async fn connect_to_database() -> Result<tokio_postgres::Client, Box<dyn std::error::Error>> {
     dotenv().ok();
-    generate_ca_file()?;
+    //generate_ca_file()?;
     let database_url = env::var("DATABASE_URL").expect("DATABASE_URL must be set");
     let mut builder =
         SslConnector::builder(SslMethod::tls()).expect("unable to create sslconnector builder");
