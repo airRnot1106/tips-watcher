@@ -4,7 +4,7 @@
 
 ## Overview
 
-東海大学の Web サービスの TIPS と Open LMS のサーバを監視する Twitter Bot です。サーバの障害発生時と復旧時にツイートをします。
+東海大学の Web サービスの TIPS と Open LMS のサーバを監視する非公式 Twitter Bot です。サーバの障害発生時と復旧時にツイートをします。
 
 ## Product
 
