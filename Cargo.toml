@@ -1,0 +1,17 @@
+[package]
+name = "tips-watcher"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+dotenv = "0.15.0"
+futures = "0.3.21"
+reqwest = { version = "0.11.10", features = ["json"] }
+tokio = { version = "1.17.0", features = ["full"] }
+tokio-postgres = "0.7.5"
+base64 = "0.13.0"
+chrono = "0.4.19"
+percent-encoding = "2.1.0"
+hmac-sha1 = "0.1.3"
