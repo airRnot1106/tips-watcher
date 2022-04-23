@@ -2,13 +2,16 @@ use base64;
 use chrono::{Duration, Utc};
 use dotenv::dotenv;
 use futures::stream::{self, StreamExt};
+use openssl::ssl::{SslConnector, SslMethod, SslVerifyMode};
 use percent_encoding::{utf8_percent_encode, AsciiSet};
+use postgres_openssl::MakeTlsConnector;
 use reqwest;
 use reqwest::header::{HeaderMap, AUTHORIZATION, CONTENT_TYPE};
 use reqwest::{Client, StatusCode};
 use std::collections::HashMap;
 use std::env;
-use tokio_postgres::NoTls;
+use std::fs::File;
+use std::io::Write;
 
 struct Service {
     id: String,
@@ -63,10 +66,27 @@ async fn fetch_status_code(client: Client) -> Result<[Service; 2], Box<dyn std::
     Ok([tips, open_lms])
 }
 
+fn generate_ca_file() -> Result<(), Box<dyn std::error::Error>> {
+    dotenv().ok();
+    let ca_crt_string = env::var("CA_CRT").expect("CA_CRT must be set");
+    let mut file = File::create("tmp/ca.crt")?;
+    write!(file, "{}", &ca_crt_string)?;
+    file.flush()?;
+    Ok(())
+}
+
 async fn connect_to_database() -> Result<tokio_postgres::Client, Box<dyn std::error::Error>> {
     dotenv().ok();
+    generate_ca_file()?;
     let database_url = env::var("DATABASE_URL").expect("DATABASE_URL must be set");
-    let (client, connection) = tokio_postgres::connect(&database_url, NoTls).await?;
+    let mut builder =
+        SslConnector::builder(SslMethod::tls()).expect("unable to create sslconnector builder");
+    builder
+        .set_ca_file("tmp/ca.crt")
+        .expect("unable to load ca.cert");
+    builder.set_verify(SslVerifyMode::NONE);
+    let connector = MakeTlsConnector::new(builder.build());
+    let (client, connection) = tokio_postgres::connect(&database_url, connector).await?;
     tokio::spawn(async move {
         if let Err(e) = connection.await {
             eprintln!("connection error: {}", e);
@@ -291,7 +311,7 @@ async fn tweet_service_down_alert(service: &Service) -> Result<(), Box<dyn std::
     let time = (Utc::now() + Duration::hours(9))
         .format("%Y年%m月%d日 %H:%M:%S")
         .to_string();
-    let text = format!("【障害情報】\n{}\n現在、{}に繋がりにくくなっています。\nサーバが復旧いたしましたら再度お知らせします。", time, service.name);
+    let text = format!("【障害情報】\n{}\n現在、{}に繋がりにくくなっています。\nサーバが復旧したら再度お知らせします。", time, service.name);
     println!("{}", text);
 
     let twitter = Twitter::new(
