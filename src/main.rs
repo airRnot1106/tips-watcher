@@ -9,8 +9,6 @@ use reqwest;
 use reqwest::header::{HeaderMap, AUTHORIZATION, CONTENT_TYPE};
 use std::collections::HashMap;
 use std::env;
-use std::fs::File;
-use std::io::Write;
 use std::process::Command;
 
 struct Service {
@@ -76,18 +74,8 @@ async fn fetch_status_code() -> Result<[Service; 2], Box<dyn std::error::Error>>
     Ok([tips, open_lms])
 }
 
-fn generate_ca_file() -> Result<(), Box<dyn std::error::Error>> {
-    dotenv().ok();
-    let ca_crt_string = env::var("CA_CRT").expect("CA_CRT must be set");
-    let mut file = File::create("tmp/ca.crt")?;
-    write!(file, "{}", &ca_crt_string)?;
-    file.flush()?;
-    Ok(())
-}
-
 async fn connect_to_database() -> Result<tokio_postgres::Client, Box<dyn std::error::Error>> {
     dotenv().ok();
-    //generate_ca_file()?;
     let database_url = env::var("DATABASE_URL").expect("DATABASE_URL must be set");
     let mut builder =
         SslConnector::builder(SslMethod::tls()).expect("unable to create sslconnector builder");
