@@ -119,7 +119,7 @@ async fn is_down(
     );
     let rows = client.query(&query, &[]).await?;
     let count_of_connection_failure: i32 = rows[0].get(0);
-    Ok(count_of_connection_failure > 2)
+    Ok(count_of_connection_failure > 1)
 }
 
 async fn should_tweet(
